@@ -11,6 +11,7 @@ public class Base62Encoder {
             sb.append(BASE62.charAt((int) (value % 62)));
             value /= 62;
         }
+
         return sb.reverse().toString();
     }
 }
