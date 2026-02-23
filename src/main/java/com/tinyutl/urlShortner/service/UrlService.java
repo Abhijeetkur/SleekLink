@@ -11,9 +11,12 @@ public class UrlService {
     @Autowired
     private UrlRepository urlRepository;
 
+    @Autowired
+    private AsyncService asyncService;
+
     public String shortenUrl(String longUrl){
         UrlMapping entity = new UrlMapping();
-        entity.setLongurl(longUrl);
+        entity.setLongUrl(longUrl);
         entity = urlRepository.save(entity);
 
         String shortCode = Base62Encoder.encode(entity.getId());
@@ -25,7 +28,7 @@ public class UrlService {
     public String getLongUrl(String shortCode) {
         UrlMapping mapping = urlRepository.findByShortCode(shortCode)
                 .orElseThrow(() -> new RuntimeException("URL not found"));
-
-        return mapping.getLongurl();
+        asyncService.incrementClick(shortCode);
+        return mapping.getLongUrl();
     }
 }
