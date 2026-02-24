@@ -16,18 +16,23 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 public class UrlController {
 
     @Autowired
-    private UrlService service;
+    private UrlService urlService;
 
     @PostMapping("/shorten")
     public String shorten(@RequestBody Map<String, String> request) {
-        return service.shortenUrl(request.get("longUrl"));
+        return urlService.shortenUrl(request.get("longUrl"));
     }
 
     @GetMapping("/{shortCode}")
     public ResponseEntity<?> redirect(@PathVariable String shortCode) {
-        String longUrl = service.getLongUrl(shortCode);
+        String longUrl = urlService.getLongUrl(shortCode);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(longUrl))
                 .build();
+    }
+
+    @GetMapping("/analytics/{shortCode}")
+    public Map<String, Object> getAnalytics(@PathVariable String shortCode) {
+        return urlService.getAnalytics(shortCode);
     }
 }

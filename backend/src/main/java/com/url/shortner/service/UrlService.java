@@ -8,6 +8,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class UrlService {
@@ -65,5 +67,28 @@ public class UrlService {
         asyncService.incrementClick(shortCode);
 
         return longUrl;
+    }
+
+    public Map<String, Object> getAnalytics(String shortCode) {
+
+        UrlMapping mapping = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("URL not found"));
+
+        // DB clicks
+        System.out.println("dbClicks");
+        int dbClicks = mapping.getClickCount();
+
+        // Redis clicks
+        System.out.println("redisClicks");
+        Object redisValue = redisTemplate.opsForValue().get("click:" + shortCode);
+        int redisClicks = redisValue != null ? Integer.parseInt(redisValue.toString()) : 0;
+
+        int totalClicks = dbClicks + redisClicks;
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("shortCode", shortCode);
+        response.put("totalClicks", totalClicks);
+
+        return response;
     }
 }
