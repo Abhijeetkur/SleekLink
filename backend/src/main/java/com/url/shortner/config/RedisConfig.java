@@ -15,11 +15,19 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
 
-        // Use plain String serializer for keys so they look legible in redis-cli
+        // 🔥 KEY as String
         template.setKeySerializer(new StringRedisSerializer());
-        // Use generic string serializer for values so numbers are stored correctly for
-        // increment operations
-        template.setValueSerializer(new GenericToStringSerializer<>(Object.class));
+
+        // 🔥 VALUE as String
+        template.setValueSerializer(new StringRedisSerializer());
+
+        // 🔥 HASH KEY
+        template.setHashKeySerializer(new StringRedisSerializer());
+
+        // 🔥 HASH VALUE
+        template.setHashValueSerializer(new StringRedisSerializer());
+
+        template.afterPropertiesSet();
 
         return template;
     }

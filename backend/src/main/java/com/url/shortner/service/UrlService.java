@@ -20,6 +20,9 @@ public class UrlService {
     private AsyncService asyncService;
 
     @Autowired
+    private AnalyticsService analyticsService;
+
+    @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
     public String shortenUrl(String longUrl){
@@ -42,33 +45,56 @@ public class UrlService {
         return shortCode;
     }
 
-    public String getLongUrl(String shortCode) {
-        String cachedUrl = (String) redisTemplate.opsForValue().get("url:" + shortCode);
+//    public String getLongUrl(String shortCode) {
+//        String cachedUrl = (String) redisTemplate.opsForValue().get("url:" + shortCode);
+//
+//        if (cachedUrl != null) {
+//            asyncService.incrementClick(shortCode); // still count click
+//            return cachedUrl; // ⚡ super fast
+//        }
+//
+//
+//        UrlMapping mapping = urlRepository.findByShortCode(shortCode)
+//                .orElseThrow(() -> new RuntimeException("URL not found"));
+//
+//        String longUrl = mapping.getLongUrl();
+//
+//        redisTemplate.opsForValue().set(
+//                "url:" + shortCode,
+//                longUrl,
+//                Duration.ofHours(24)
+//        );
+//
+//        redisTemplate.opsForValue().set("url:" + shortCode, longUrl);
+//
+//        asyncService.incrementClick(shortCode);
+//
+//        return longUrl;
+//    }
+public String getLongUrl(String shortCode) {
 
-        if (cachedUrl != null) {
-            asyncService.incrementClick(shortCode); // still count click
-            return cachedUrl; // ⚡ super fast
-        }
+    String cachedUrl = (String) redisTemplate.opsForValue().get("url:" + shortCode);
 
-
-        UrlMapping mapping = urlRepository.findByShortCode(shortCode)
-                .orElseThrow(() -> new RuntimeException("URL not found"));
-
-        String longUrl = mapping.getLongUrl();
-
-        redisTemplate.opsForValue().set(
-                "url:" + shortCode,
-                longUrl,
-                Duration.ofHours(24)
-        );
-
-        redisTemplate.opsForValue().set("url:" + shortCode, longUrl);
-
-        asyncService.incrementClick(shortCode);
-
-        return longUrl;
+    if (cachedUrl != null) {
+        analyticsService.updateAnalytics(shortCode, "India"); // 🔥 FIX
+        return cachedUrl;
     }
 
+    UrlMapping mapping = urlRepository.findByShortCode(shortCode)
+            .orElseThrow(() -> new RuntimeException("URL not found"));
+
+    String longUrl = mapping.getLongUrl();
+
+    redisTemplate.opsForValue().set(
+            "url:" + shortCode,
+            longUrl,
+            Duration.ofHours(24)
+    );
+
+    analyticsService.updateAnalytics(shortCode, "India"); // 🔥 FIX
+
+    return longUrl;
+}
     public Map<String, Object> getAnalytics(String shortCode) {
 
         UrlMapping mapping = urlRepository.findByShortCode(shortCode)
