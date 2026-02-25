@@ -77,12 +77,12 @@ public class UrlService {
         return shortCode;
     }
 
-    public String getLongUrl(String shortCode, String userAgent) {
+    public String getLongUrl(String shortCode, String userAgent, String ipAddress) {
 
         String cachedUrl = (String) redisTemplate.opsForValue().get("url:" + shortCode);
 
         if (cachedUrl != null) {
-            analyticsService.updateAnalytics(shortCode, "India", userAgent); // 🔥 FIX
+            analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // 🔥 FIX
             return cachedUrl;
         }
 
@@ -96,7 +96,7 @@ public class UrlService {
                 longUrl,
                 Duration.ofHours(24));
 
-        analyticsService.updateAnalytics(shortCode, "India", userAgent); // 🔥 FIX
+        analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // 🔥 FIX
 
         return longUrl;
     }

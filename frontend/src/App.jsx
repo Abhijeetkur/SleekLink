@@ -17,7 +17,7 @@ function App() {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8080/shorten', {
+            const response = await fetch(`http://${window.location.hostname}:8080/shorten`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

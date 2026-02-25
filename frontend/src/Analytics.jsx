@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Search, ArrowRight, Loader2, Globe, Calendar, Clock } from 'lucide-react';
+import { BarChart3, Search, ArrowRight, Loader2, Globe, Calendar, Clock, MonitorSmartphone, MousePointer2, Laptop } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
     LineChart, Line, PieChart, Pie, Cell, Legend
@@ -30,7 +30,7 @@ export default function Analytics() {
         setAnalyticsData(null);
 
         try {
-            const resp = await fetch(`http://localhost:8080/analytics/${code}`);
+            const resp = await fetch(`http://${window.location.hostname}:8080/analytics/${code}`);
             if (!resp.ok) {
                 throw new Error('Analytics not found or backend error');
             }
@@ -69,6 +69,15 @@ export default function Analytics() {
         return Object.keys(geoMap).map((country, idx) => ({
             name: country || 'Unknown',
             value: geoMap[country],
+            color: COLORS[idx % COLORS.length]
+        })).sort((a, b) => b.value - a.value);
+    };
+
+    const formatPieData = (dataMap) => {
+        if (!dataMap) return [];
+        return Object.keys(dataMap).map((key, idx) => ({
+            name: key || 'Unknown',
+            value: dataMap[key],
             color: COLORS[idx % COLORS.length]
         })).sort((a, b) => b.value - a.value);
     };
@@ -198,6 +207,74 @@ export default function Analytics() {
                                         />
                                         <Line type="monotone" dataKey="clicks" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#171b26' }} activeDot={{ r: 6 }} />
                                     </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="chart-card">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <MonitorSmartphone size={20} /> Devices
+                            </h3>
+                            <div className="chart-wrapper">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={formatPieData(analyticsData.deviceAnalytics)}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={90}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                            stroke="none"
+                                        >
+                                            {formatPieData(analyticsData.deviceAnalytics).map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ backgroundColor: '#171b26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                        <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="chart-card">
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Laptop size={20} /> Operating Systems
+                            </h3>
+                            <div className="chart-wrapper">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={formatPieData(analyticsData.osAnalytics)} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                        <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} hide />
+                                        <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#171b26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} />
+                                        <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+                                            {formatPieData(analyticsData.osAnalytics).map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        <div className="chart-card" style={{ gridColumn: '1 / -1' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <MousePointer2 size={20} /> Browsers
+                            </h3>
+                            <div className="chart-wrapper" style={{ height: '350px' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={formatPieData(analyticsData.browserAnalytics)} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
+                                        <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} angle={-45} textAnchor="end" />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#171b26', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                                            {formatPieData(analyticsData.browserAnalytics).map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
