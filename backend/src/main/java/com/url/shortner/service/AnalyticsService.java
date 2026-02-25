@@ -2,6 +2,7 @@ package com.url.shortner.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ public class AnalyticsService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Async
     public void updateAnalytics(String shortCode, String country) {
 
         // 🔥 1. Total clicks

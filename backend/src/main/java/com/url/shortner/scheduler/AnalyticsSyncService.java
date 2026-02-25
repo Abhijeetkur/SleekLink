@@ -1,4 +1,4 @@
-package com.url.shortner.service;
+package com.url.shortner.scheduler;
 
 import com.url.shortner.entity.DailyAnalytics;
 import com.url.shortner.entity.GeoAnalytics;
@@ -41,7 +41,7 @@ public class AnalyticsSyncService {
             for (String key : totalKeys) {
                 String shortCode = key.replace("click_total:", "");
 
-                Object value = redisTemplate.opsForValue().get(key);
+                Object value = redisTemplate.opsForValue().getAndDelete(key);
                 if (value != null) {
                     int total = Integer.parseInt(value.toString());
                     urlRepository.incrementClickCount(shortCode, total);
@@ -70,9 +70,11 @@ public class AnalyticsSyncService {
                                 return newD;
                             });
 
-                    d.setCount(count);
+                    d.setCount(d.getCount() + count);
                     dailyRepo.save(d);
                 }
+
+                redisTemplate.delete(key);
             }
         }
 
@@ -97,9 +99,11 @@ public class AnalyticsSyncService {
                                 return newH;
                             });
 
-                    h.setCount(count);
+                    h.setCount(h.getCount() + count);
                     hourlyRepo.save(h);
                 }
+
+                redisTemplate.delete(key);
             }
         }
 
@@ -124,9 +128,11 @@ public class AnalyticsSyncService {
                                 return newG;
                             });
 
-                    g.setCount(count);
+                    g.setCount(g.getCount() + count);
                     geoRepo.save(g);
                 }
+
+                redisTemplate.delete(key);
             }
         }
 
@@ -135,5 +141,11 @@ public class AnalyticsSyncService {
                 .reverseRange("trending_urls", 0, 10);
 
         System.out.println("Top trending: " + trending);
+
+        // 🔥 6. Invalidate DB Cache to avoid stale data drops
+        Set<String> cacheKeys = redisTemplate.keys("analytics_db:*");
+        if (cacheKeys != null && !cacheKeys.isEmpty()) {
+            redisTemplate.delete(cacheKeys);
+        }
     }
 }
