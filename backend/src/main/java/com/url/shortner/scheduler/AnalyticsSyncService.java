@@ -3,9 +3,15 @@ package com.url.shortner.scheduler;
 import com.url.shortner.entity.DailyAnalytics;
 import com.url.shortner.entity.GeoAnalytics;
 import com.url.shortner.entity.HourlyAnalytics;
+import com.url.shortner.entity.OsAnalytics;
+import com.url.shortner.entity.DeviceAnalytics;
+import com.url.shortner.entity.BrowserAnalytics;
 import com.url.shortner.repository.DailyRepo;
 import com.url.shortner.repository.GeoRepo;
 import com.url.shortner.repository.HourlyRepo;
+import com.url.shortner.repository.OsRepo;
+import com.url.shortner.repository.DeviceRepo;
+import com.url.shortner.repository.BrowserRepo;
 import com.url.shortner.repository.UrlRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,6 +36,12 @@ public class AnalyticsSyncService {
     private HourlyRepo hourlyRepo;
     @Autowired
     private GeoRepo geoRepo;
+    @Autowired
+    private OsRepo osRepo;
+    @Autowired
+    private DeviceRepo deviceRepo;
+    @Autowired
+    private BrowserRepo browserRepo;
 
     @Scheduled(fixedRate = 60000)
     public void syncAllAnalytics() {
@@ -45,7 +57,8 @@ public class AnalyticsSyncService {
 
                 // Atomic rename to avoid race condition
                 Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
-                if (Boolean.FALSE.equals(renamed)) continue;
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
 
                 try {
                     Object value = redisTemplate.opsForValue().get(tempKey);
@@ -74,7 +87,8 @@ public class AnalyticsSyncService {
                 String tempKey = key + ":processing";
 
                 Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
-                if (Boolean.FALSE.equals(renamed)) continue;
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
 
                 try {
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
@@ -115,7 +129,8 @@ public class AnalyticsSyncService {
                 String tempKey = key + ":processing";
 
                 Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
-                if (Boolean.FALSE.equals(renamed)) continue;
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
 
                 try {
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
@@ -156,7 +171,8 @@ public class AnalyticsSyncService {
                 String tempKey = key + ":processing";
 
                 Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
-                if (Boolean.FALSE.equals(renamed)) continue;
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
 
                 try {
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
@@ -183,6 +199,114 @@ public class AnalyticsSyncService {
 
                 } catch (Exception e) {
                     System.out.println("Error syncing geo: " + e.getMessage());
+                }
+            }
+        }
+
+        // 4.1 OS SYNC
+        Set<String> osKeys = redisTemplate.keys("os:*");
+        if (osKeys != null) {
+            for (String key : osKeys) {
+                String shortCode = key.replace("os:", "");
+                String tempKey = key + ":processing";
+
+                Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
+
+                try {
+                    Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
+                    for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                        String os = entry.getKey().toString();
+                        int count = Integer.parseInt(entry.getValue().toString());
+
+                        OsAnalytics o = osRepo.findByShortCodeAndOs(shortCode, os)
+                                .orElseGet(() -> {
+                                    OsAnalytics newO = new OsAnalytics();
+                                    newO.setShortCode(shortCode);
+                                    newO.setOs(os);
+                                    newO.setCount(0);
+                                    return newO;
+                                });
+
+                        o.setCount(o.getCount() + count);
+                        osRepo.save(o);
+                    }
+                    redisTemplate.delete(tempKey);
+                } catch (Exception e) {
+                    System.out.println("Error syncing os: " + e.getMessage());
+                }
+            }
+        }
+
+        // 4.2 DEVICE SYNC
+        Set<String> deviceKeys = redisTemplate.keys("device:*");
+        if (deviceKeys != null) {
+            for (String key : deviceKeys) {
+                String shortCode = key.replace("device:", "");
+                String tempKey = key + ":processing";
+
+                Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
+
+                try {
+                    Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
+                    for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                        String device = entry.getKey().toString();
+                        int count = Integer.parseInt(entry.getValue().toString());
+
+                        DeviceAnalytics d = deviceRepo.findByShortCodeAndDevice(shortCode, device)
+                                .orElseGet(() -> {
+                                    DeviceAnalytics newD = new DeviceAnalytics();
+                                    newD.setShortCode(shortCode);
+                                    newD.setDevice(device);
+                                    newD.setCount(0);
+                                    return newD;
+                                });
+
+                        d.setCount(d.getCount() + count);
+                        deviceRepo.save(d);
+                    }
+                    redisTemplate.delete(tempKey);
+                } catch (Exception e) {
+                    System.out.println("Error syncing device: " + e.getMessage());
+                }
+            }
+        }
+
+        // 4.3 BROWSER SYNC
+        Set<String> browserKeys = redisTemplate.keys("browser:*");
+        if (browserKeys != null) {
+            for (String key : browserKeys) {
+                String shortCode = key.replace("browser:", "");
+                String tempKey = key + ":processing";
+
+                Boolean renamed = redisTemplate.renameIfAbsent(key, tempKey);
+                if (Boolean.FALSE.equals(renamed))
+                    continue;
+
+                try {
+                    Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
+                    for (Map.Entry<Object, Object> entry : map.entrySet()) {
+                        String browser = entry.getKey().toString();
+                        int count = Integer.parseInt(entry.getValue().toString());
+
+                        BrowserAnalytics b = browserRepo.findByShortCodeAndBrowser(shortCode, browser)
+                                .orElseGet(() -> {
+                                    BrowserAnalytics newB = new BrowserAnalytics();
+                                    newB.setShortCode(shortCode);
+                                    newB.setBrowser(browser);
+                                    newB.setCount(0);
+                                    return newB;
+                                });
+
+                        b.setCount(b.getCount() + count);
+                        browserRepo.save(b);
+                    }
+                    redisTemplate.delete(tempKey);
+                } catch (Exception e) {
+                    System.out.println("Error syncing browser: " + e.getMessage());
                 }
             }
         }

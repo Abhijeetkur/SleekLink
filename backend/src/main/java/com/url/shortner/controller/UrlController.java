@@ -24,8 +24,9 @@ public class UrlController {
     }
 
     @GetMapping("/{shortCode}")
-    public ResponseEntity<?> redirect(@PathVariable String shortCode) {
-        String longUrl = urlService.getLongUrl(shortCode);
+    public ResponseEntity<?> redirect(@PathVariable String shortCode,
+            @RequestHeader(value = "User-Agent", defaultValue = "Unknown") String userAgent) {
+        String longUrl = urlService.getLongUrl(shortCode, userAgent);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(longUrl))
                 .build();
