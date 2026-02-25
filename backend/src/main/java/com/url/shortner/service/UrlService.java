@@ -1,5 +1,6 @@
 package com.url.shortner.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.url.shortner.entity.DailyAnalytics;
 import com.url.shortner.entity.GeoAnalytics;
 import com.url.shortner.entity.HourlyAnalytics;
@@ -22,9 +23,6 @@ import java.util.Map;
 public class UrlService {
     @Autowired
     private UrlRepository urlRepository;
-
-    @Autowired
-    private AsyncService asyncService;
 
     @Autowired
     private AnalyticsService analyticsService;
@@ -93,17 +91,86 @@ public class UrlService {
         Map<String, Object> response = new HashMap<>();
         response.put("shortCode", shortCode);
 
-        //1. Fetch DB data (historical)
-        UrlMapping mapping = urlRepository.findByShortCode(shortCode)
-                .orElseThrow(() -> new RuntimeException("URL not found"));
+        String snapshotKey = "analytics_db_snapshot:" + shortCode;
 
-        int dbClicks = mapping.getClickCount();
+        Map<String, Object> dbSnapshot = null;
 
-        var dailyDb = dailyRepo.findByShortCode(shortCode);
-        var hourlyDb = hourlyRepo.findByShortCode(shortCode);
-        var geoDb = geoRepo.findByShortCode(shortCode);
+        try {
+            // 🔥 1. Try to get DB snapshot from Redis
+            String cachedJson = (String) redisTemplate.opsForValue().get(snapshotKey);
 
-        //2. Fetch Redis LIVE data
+            if (cachedJson != null) {
+                System.out.println("snapshot found");
+                System.out.println(objectMapper.readTree(cachedJson));
+                dbSnapshot = objectMapper.readValue(
+                        cachedJson,
+                        new TypeReference<Map<String, Object>>() {}
+                );
+            }
+        } catch (Exception e) {
+            dbSnapshot = null; // fallback to DB
+        }
+
+        // 🔥 2. If snapshot not found → fetch from DB
+        if (dbSnapshot == null) {
+            System.out.println("snapshot not found so db hit");
+
+            UrlMapping mapping = urlRepository.findByShortCode(shortCode)
+                    .orElseThrow(() -> new RuntimeException("URL not found"));
+
+            int dbClicks = mapping.getClickCount();
+
+            var dailyDb = dailyRepo.findByShortCode(shortCode);
+            var hourlyDb = hourlyRepo.findByShortCode(shortCode);
+            var geoDb = geoRepo.findByShortCode(shortCode);
+
+            // Convert DB objects → Map
+            Map<String, Integer> dailyMap = new HashMap<>();
+            for (DailyAnalytics d : dailyDb) {
+                dailyMap.put(d.getDate().toString(), d.getCount());
+            }
+
+            Map<String, Integer> hourlyMap = new HashMap<>();
+            for (HourlyAnalytics h : hourlyDb) {
+                hourlyMap.put(h.getHour().toString(), h.getCount());
+            }
+
+            Map<String, Integer> geoMap = new HashMap<>();
+            for (GeoAnalytics g : geoDb) {
+                geoMap.put(g.getCountry(), g.getCount());
+            }
+
+            dbSnapshot = new HashMap<>();
+            dbSnapshot.put("dbClicks", dbClicks);
+            dbSnapshot.put("dailyAnalytics", dailyMap);
+            dbSnapshot.put("hourlyAnalytics", hourlyMap);
+            dbSnapshot.put("geoAnalytics", geoMap);
+
+            // 🔥 3. Cache snapshot in Redis (short TTL)
+            try {
+                redisTemplate.opsForValue().set(
+                        snapshotKey,
+                        objectMapper.writeValueAsString(dbSnapshot),
+                        Duration.ofSeconds(20) // 🔥 tune this
+                );
+            } catch (Exception e) {
+                System.out.println("Snapshot cache failed: " + e.getMessage());
+            }
+        }
+
+        // 🔥 4. Extract snapshot data
+        int dbClicks = (Integer) dbSnapshot.get("dbClicks");
+
+        Map<String, Integer> finalDaily =
+                (Map<String, Integer>) dbSnapshot.get("dailyAnalytics");
+
+        Map<String, Integer> finalHourly =
+                (Map<String, Integer>) dbSnapshot.get("hourlyAnalytics");
+
+        Map<String, Integer> finalGeo =
+                (Map<String, Integer>) dbSnapshot.get("geoAnalytics");
+
+        // 🔥 5. Fetch LIVE Redis data
         Object redisClickObj = redisTemplate.opsForValue().get("click_total:" + shortCode);
         int redisClicks = redisClickObj != null ? Integer.parseInt(redisClickObj.toString()) : 0;
 
@@ -111,49 +178,31 @@ public class UrlService {
         Map<Object, Object> hourlyRedis = redisTemplate.opsForHash().entries("hourly:" + shortCode);
         Map<Object, Object> geoRedis = redisTemplate.opsForHash().entries("geo:" + shortCode);
 
-        //3. Merge DAILY
-        Map<String, Integer> finalDaily = new HashMap<>();
-
-        for (DailyAnalytics d : dailyDb) {
-            finalDaily.put(d.getDate().toString(), d.getCount());
-        }
-
+        // 🔥 6. Merge DAILY
         for (Map.Entry<Object, Object> entry : dailyRedis.entrySet()) {
             String date = entry.getKey().toString();
             int count = Integer.parseInt(entry.getValue().toString());
             finalDaily.merge(date, count, Integer::sum);
         }
 
-        //4. Merge HOURLY
-        Map<String, Integer> finalHourly = new HashMap<>();
-
-        for (HourlyAnalytics h : hourlyDb) {
-            finalHourly.put(h.getHour().toString(), h.getCount());
-        }
-
+        // 🔥 7. Merge HOURLY
         for (Map.Entry<Object, Object> entry : hourlyRedis.entrySet()) {
             String hour = entry.getKey().toString();
             int count = Integer.parseInt(entry.getValue().toString());
             finalHourly.merge(hour, count, Integer::sum);
         }
 
-        //5. Merge GEO
-        Map<String, Integer> finalGeo = new HashMap<>();
-
-        for (GeoAnalytics g : geoDb) {
-            finalGeo.put(g.getCountry(), g.getCount());
-        }
-
+        // 🔥 8. Merge GEO
         for (Map.Entry<Object, Object> entry : geoRedis.entrySet()) {
             String country = entry.getKey().toString();
             int count = Integer.parseInt(entry.getValue().toString());
             finalGeo.merge(country, count, Integer::sum);
         }
 
-        //6. Total clicks
+        // 🔥 9. Total clicks
         int totalClicks = dbClicks + redisClicks;
 
-        // 7. Response
+        // 🔥 10. Response
         response.put("totalClicks", totalClicks);
         response.put("dailyAnalytics", finalDaily);
         response.put("hourlyAnalytics", finalHourly);
