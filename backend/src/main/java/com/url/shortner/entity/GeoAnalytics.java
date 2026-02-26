@@ -5,7 +5,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "geo_analytics")
+@Table(name = "geo_analytics", indexes = {
+        @Index(name = "idx_geo_url_mapping", columnList = "url_mapping_id, country")
+}, uniqueConstraints = {
+        @UniqueConstraint(columnNames = { "url_mapping_id", "country" })
+})
 @Getter
 @Setter
 public class GeoAnalytics {
@@ -14,7 +18,12 @@ public class GeoAnalytics {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String shortCode;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "url_mapping_id", nullable = false)
+    private UrlMapping urlMapping;
+
+    @Column(nullable = false)
     private String country;
+
     private int count;
 }

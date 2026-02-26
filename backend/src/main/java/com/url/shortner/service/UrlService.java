@@ -114,7 +114,7 @@ public class UrlService {
 
             // Push Daily
             Map<String, String> dailyMap = new HashMap<>();
-            dailyRepo.findByShortCode(shortCode)
+            dailyRepo.findByUrlMapping_ShortCode(shortCode)
                     .forEach(d -> dailyMap.put(d.getDate().toString(), String.valueOf(d.getCount())));
             if (!dailyMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:daily:" + shortCode, dailyMap);
@@ -122,7 +122,7 @@ public class UrlService {
 
             // Push Hourly
             Map<String, String> hourlyMap = new HashMap<>();
-            hourlyRepo.findByShortCode(shortCode)
+            hourlyRepo.findByUrlMapping_ShortCode(shortCode)
                     .forEach(h -> hourlyMap.put(h.getHour().toString(), String.valueOf(h.getCount())));
             if (!hourlyMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:hourly:" + shortCode, hourlyMap);
@@ -130,21 +130,23 @@ public class UrlService {
 
             // Push Geo
             Map<String, String> geoMap = new HashMap<>();
-            geoRepo.findByShortCode(shortCode).forEach(g -> geoMap.put(g.getCountry(), String.valueOf(g.getCount())));
+            geoRepo.findByUrlMapping_ShortCode(shortCode)
+                    .forEach(g -> geoMap.put(g.getCountry(), String.valueOf(g.getCount())));
             if (!geoMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:geo:" + shortCode, geoMap);
             redisTemplate.expire("cache:geo:" + shortCode, Duration.ofHours(24));
 
             // Push OS
             Map<String, String> osMap = new HashMap<>();
-            osRepo.findByShortCode(shortCode).forEach(o -> osMap.put(o.getOs(), String.valueOf(o.getCount())));
+            osRepo.findByUrlMapping_ShortCode(shortCode)
+                    .forEach(o -> osMap.put(o.getOs(), String.valueOf(o.getCount())));
             if (!osMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:os:" + shortCode, osMap);
             redisTemplate.expire("cache:os:" + shortCode, Duration.ofHours(24));
 
             // Push Device
             Map<String, String> deviceMap = new HashMap<>();
-            deviceRepo.findByShortCode(shortCode)
+            deviceRepo.findByUrlMapping_ShortCode(shortCode)
                     .forEach(d -> deviceMap.put(d.getDevice(), String.valueOf(d.getCount())));
             if (!deviceMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:device:" + shortCode, deviceMap);
@@ -152,7 +154,7 @@ public class UrlService {
 
             // Push Browser
             Map<String, String> browserMap = new HashMap<>();
-            browserRepo.findByShortCode(shortCode)
+            browserRepo.findByUrlMapping_ShortCode(shortCode)
                     .forEach(b -> browserMap.put(b.getBrowser(), String.valueOf(b.getCount())));
             if (!browserMap.isEmpty())
                 redisTemplate.opsForHash().putAll("cache:browser:" + shortCode, browserMap);

@@ -67,13 +67,17 @@ public class KafkaConsumerService {
         // TOTAL
         urlRepository.incrementClickCount(shortCode, 1);
 
+        com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+        if (mapping == null)
+            return;
+
         // DAILY
         LocalDate date = time.toLocalDate();
 
-        DailyAnalytics d = dailyRepo.findByShortCodeAndDate(shortCode, date)
+        DailyAnalytics d = dailyRepo.findByUrlMappingAndDate(mapping, date)
                 .orElseGet(() -> {
                     DailyAnalytics newD = new DailyAnalytics();
-                    newD.setShortCode(shortCode);
+                    newD.setUrlMapping(mapping);
                     newD.setDate(date);
                     newD.setCount(0);
                     return newD;
@@ -85,10 +89,10 @@ public class KafkaConsumerService {
         // HOURLY
         LocalDateTime hour = time.truncatedTo(ChronoUnit.HOURS);
 
-        HourlyAnalytics h = hourlyRepo.findByShortCodeAndHour(shortCode, hour)
+        HourlyAnalytics h = hourlyRepo.findByUrlMappingAndHour(mapping, hour)
                 .orElseGet(() -> {
                     HourlyAnalytics newH = new HourlyAnalytics();
-                    newH.setShortCode(shortCode);
+                    newH.setUrlMapping(mapping);
                     newH.setHour(hour);
                     newH.setCount(0);
                     return newH;
@@ -98,10 +102,10 @@ public class KafkaConsumerService {
         hourlyRepo.save(h);
 
         // GEO
-        GeoAnalytics g = geoRepo.findByShortCodeAndCountry(shortCode, country)
+        GeoAnalytics g = geoRepo.findByUrlMappingAndCountry(mapping, country)
                 .orElseGet(() -> {
                     GeoAnalytics newG = new GeoAnalytics();
-                    newG.setShortCode(shortCode);
+                    newG.setUrlMapping(mapping);
                     newG.setCountry(country);
                     newG.setCount(0);
                     return newG;
@@ -111,10 +115,10 @@ public class KafkaConsumerService {
         geoRepo.save(g);
 
         // OS
-        OsAnalytics o = osRepo.findByShortCodeAndOs(shortCode, os)
+        OsAnalytics o = osRepo.findByUrlMappingAndOs(mapping, os)
                 .orElseGet(() -> {
                     OsAnalytics newO = new OsAnalytics();
-                    newO.setShortCode(shortCode);
+                    newO.setUrlMapping(mapping);
                     newO.setOs(os);
                     newO.setCount(0);
                     return newO;
@@ -124,10 +128,10 @@ public class KafkaConsumerService {
         osRepo.save(o);
 
         // BROWSER
-        BrowserAnalytics b = browserRepo.findByShortCodeAndBrowser(shortCode, browser)
+        BrowserAnalytics b = browserRepo.findByUrlMappingAndBrowser(mapping, browser)
                 .orElseGet(() -> {
                     BrowserAnalytics newB = new BrowserAnalytics();
-                    newB.setShortCode(shortCode);
+                    newB.setUrlMapping(mapping);
                     newB.setBrowser(browser);
                     newB.setCount(0);
                     return newB;
@@ -137,10 +141,10 @@ public class KafkaConsumerService {
         browserRepo.save(b);
 
         // DEVICE
-        DeviceAnalytics dt = deviceRepo.findByShortCodeAndDevice(shortCode, deviceType)
+        DeviceAnalytics dt = deviceRepo.findByUrlMappingAndDevice(mapping, deviceType)
                 .orElseGet(() -> {
                     DeviceAnalytics newDt = new DeviceAnalytics();
-                    newDt.setShortCode(shortCode);
+                    newDt.setUrlMapping(mapping);
                     newDt.setDevice(deviceType);
                     newDt.setCount(0);
                     return newDt;

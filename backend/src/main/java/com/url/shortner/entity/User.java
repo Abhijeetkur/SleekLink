@@ -3,6 +3,7 @@ package com.url.shortner.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
@@ -21,4 +22,7 @@ public class User {
     private String password;
 
     private String role = "ROLE_USER";
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<UrlMapping> urls;
 }

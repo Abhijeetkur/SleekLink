@@ -92,6 +92,11 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
 
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
@@ -99,10 +104,10 @@ public class AnalyticsSyncService {
                         LocalDate date = LocalDate.parse(entry.getKey().toString());
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        DailyAnalytics d = dailyRepo.findByShortCodeAndDate(shortCode, date)
+                        DailyAnalytics d = dailyRepo.findByUrlMappingAndDate(mapping, date)
                                 .orElseGet(() -> {
                                     DailyAnalytics newD = new DailyAnalytics();
-                                    newD.setShortCode(shortCode);
+                                    newD.setUrlMapping(mapping);
                                     newD.setDate(date);
                                     newD.setCount(0);
                                     return newD;
@@ -134,6 +139,11 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
 
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
@@ -141,10 +151,10 @@ public class AnalyticsSyncService {
                         LocalDateTime hour = LocalDateTime.parse(entry.getKey().toString());
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        HourlyAnalytics h = hourlyRepo.findByShortCodeAndHour(shortCode, hour)
+                        HourlyAnalytics h = hourlyRepo.findByUrlMappingAndHour(mapping, hour)
                                 .orElseGet(() -> {
                                     HourlyAnalytics newH = new HourlyAnalytics();
-                                    newH.setShortCode(shortCode);
+                                    newH.setUrlMapping(mapping);
                                     newH.setHour(hour);
                                     newH.setCount(0);
                                     return newH;
@@ -176,6 +186,11 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
 
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
@@ -183,10 +198,10 @@ public class AnalyticsSyncService {
                         String country = entry.getKey().toString();
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        GeoAnalytics g = geoRepo.findByShortCodeAndCountry(shortCode, country)
+                        GeoAnalytics g = geoRepo.findByUrlMappingAndCountry(mapping, country)
                                 .orElseGet(() -> {
                                     GeoAnalytics newG = new GeoAnalytics();
-                                    newG.setShortCode(shortCode);
+                                    newG.setUrlMapping(mapping);
                                     newG.setCountry(country);
                                     newG.setCount(0);
                                     return newG;
@@ -216,15 +231,20 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
                         String os = entry.getKey().toString();
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        OsAnalytics o = osRepo.findByShortCodeAndOs(shortCode, os)
+                        OsAnalytics o = osRepo.findByUrlMappingAndOs(mapping, os)
                                 .orElseGet(() -> {
                                     OsAnalytics newO = new OsAnalytics();
-                                    newO.setShortCode(shortCode);
+                                    newO.setUrlMapping(mapping);
                                     newO.setOs(os);
                                     newO.setCount(0);
                                     return newO;
@@ -252,15 +272,20 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
                         String device = entry.getKey().toString();
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        DeviceAnalytics d = deviceRepo.findByShortCodeAndDevice(shortCode, device)
+                        DeviceAnalytics d = deviceRepo.findByUrlMappingAndDevice(mapping, device)
                                 .orElseGet(() -> {
                                     DeviceAnalytics newD = new DeviceAnalytics();
-                                    newD.setShortCode(shortCode);
+                                    newD.setUrlMapping(mapping);
                                     newD.setDevice(device);
                                     newD.setCount(0);
                                     return newD;
@@ -288,15 +313,20 @@ public class AnalyticsSyncService {
                     continue;
 
                 try {
+                    com.url.shortner.entity.UrlMapping mapping = urlRepository.findByShortCode(shortCode).orElse(null);
+                    if (mapping == null) {
+                        redisTemplate.delete(tempKey);
+                        continue;
+                    }
                     Map<Object, Object> map = redisTemplate.opsForHash().entries(tempKey);
                     for (Map.Entry<Object, Object> entry : map.entrySet()) {
                         String browser = entry.getKey().toString();
                         int count = Integer.parseInt(entry.getValue().toString());
 
-                        BrowserAnalytics b = browserRepo.findByShortCodeAndBrowser(shortCode, browser)
+                        BrowserAnalytics b = browserRepo.findByUrlMappingAndBrowser(mapping, browser)
                                 .orElseGet(() -> {
                                     BrowserAnalytics newB = new BrowserAnalytics();
-                                    newB.setShortCode(shortCode);
+                                    newB.setUrlMapping(mapping);
                                     newB.setBrowser(browser);
                                     newB.setCount(0);
                                     return newB;
