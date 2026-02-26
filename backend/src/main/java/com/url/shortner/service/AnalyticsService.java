@@ -21,7 +21,7 @@ public class AnalyticsService {
 
         public void updateAnalytics(String shortCode, String ipAddress, String device) {
 
-                // 🛑 DEBOUNCE LOGIC (Solves the Smartphone double-click / prefetch bug)
+                // DEBOUNCE LOGIC (Solves the Smartphone double-click / prefetch bug)
                 // If this IP has clicked this shortCode in the last 5 seconds, ignore the
                 // duplicate!
                 String debounceKey = "debounce:" + shortCode + ":" + ipAddress;

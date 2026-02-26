@@ -20,8 +20,9 @@ public class UrlController {
     private UrlService urlService;
 
     @PostMapping("/shorten")
-    public String shorten(@RequestBody Map<String, String> request) {
-        return urlService.shortenUrl(request.get("longUrl"));
+    public String shorten(@RequestBody Map<String, String> request, java.security.Principal principal) {
+        String username = principal != null ? principal.getName() : null;
+        return urlService.shortenUrl(request.get("longUrl"), username);
     }
 
     @GetMapping("/{shortCode}")
@@ -44,7 +45,7 @@ public class UrlController {
     }
 
     @GetMapping("/analytics/{shortCode}")
-    public Map<String, Object> getAnalytics(@PathVariable String shortCode) {
-        return urlService.getAnalytics(shortCode);
+    public Map<String, Object> getAnalytics(@PathVariable String shortCode, java.security.Principal principal) {
+        return urlService.getAnalytics(shortCode, principal.getName());
     }
 }

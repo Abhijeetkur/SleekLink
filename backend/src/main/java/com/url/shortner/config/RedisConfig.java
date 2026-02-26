@@ -14,16 +14,16 @@ public class RedisConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(factory);
 
-        // KEY as String
+        // 🔥 KEY as String
         template.setKeySerializer(new StringRedisSerializer());
 
-        // VALUE as String
+        // 🔥 VALUE as String
         template.setValueSerializer(new StringRedisSerializer());
 
-        // HASH KEY
+        // 🔥 HASH KEY
         template.setHashKeySerializer(new StringRedisSerializer());
 
-        // HASH VALUE
+        // 🔥 HASH VALUE
         template.setHashValueSerializer(new StringRedisSerializer());
 
         template.afterPropertiesSet();

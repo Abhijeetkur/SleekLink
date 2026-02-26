@@ -10,6 +10,8 @@ import com.url.shortner.repository.HourlyRepo;
 import com.url.shortner.repository.OsRepo;
 import com.url.shortner.repository.DeviceRepo;
 import com.url.shortner.repository.BrowserRepo;
+import com.url.shortner.repository.UserRepository;
+import com.url.shortner.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ import java.util.Map;
 public class UrlService {
     @Autowired
     private UrlRepository urlRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private AnalyticsService analyticsService;
@@ -51,9 +56,14 @@ public class UrlService {
             .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
             .configure(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
-    public String shortenUrl(String longUrl) {
+    public String shortenUrl(String longUrl, String username) {
         UrlMapping entity = new UrlMapping();
         entity.setLongUrl(longUrl);
+
+        if (username != null) {
+            userRepository.findByUsername(username).ifPresent(entity::setUser);
+        }
+
         entity = urlRepository.save(entity);
 
         String shortCode = Base62Encoder.encode(entity.getId());
@@ -94,14 +104,20 @@ public class UrlService {
         return longUrl;
     }
 
-    public Map<String, Object> getAnalytics(String shortCode) {
+    public Map<String, Object> getAnalytics(String shortCode, String username) {
+
+        UrlMapping cachedMapping = urlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new RuntimeException("URL not found"));
+
+        if (cachedMapping.getUser() == null || !cachedMapping.getUser().getUsername().equals(username)) {
+            throw new RuntimeException("Unauthorized: You do not have permission to view this URL's analytics.");
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("shortCode", shortCode);
 
         String totalKey = "cache:total:" + shortCode;
 
-        // 1. If Cache doesn't exist, Load entirely from DB & populate Cache
         if (Boolean.FALSE.equals(redisTemplate.hasKey(totalKey))) {
             System.out.println("Cache missed, loading analytics from DB to Redis...");
             UrlMapping mapping = urlRepository.findByShortCode(shortCode)
