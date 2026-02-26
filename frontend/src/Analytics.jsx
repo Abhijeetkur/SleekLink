@@ -8,7 +8,7 @@ import './Analytics.css';
 
 const COLORS = ['#6366f1', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'];
 
-export default function Analytics() {
+export default function Analytics({ token }) {
     const [shortCode, setShortCode] = useState('');
     const [analyticsData, setAnalyticsData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -30,7 +30,15 @@ export default function Analytics() {
         setAnalyticsData(null);
 
         try {
-            const resp = await fetch(`http://${window.location.hostname}:8080/analytics/${code}`);
+            const resp = await fetch(`http://${window.location.hostname}:8080/analytics/${code}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (resp.status === 401 || resp.status === 403) {
+                throw new Error('Unauthorized: Your session may have expired.');
+            }
             if (!resp.ok) {
                 throw new Error('Analytics not found or backend error');
             }

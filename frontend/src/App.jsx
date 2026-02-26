@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Link2, Copy, Check, ArrowRight, Zap, Shield, BarChart3, Activity } from 'lucide-react';
+import { Link2, Copy, Check, ArrowRight, Zap, Shield, BarChart3, Activity, LogOut } from 'lucide-react';
 import './App.css';
 import Analytics from './Analytics';
+import Auth from './Auth';
 
 function App() {
+    const [token, setToken] = useState(localStorage.getItem('token') || '');
     const [activeTab, setActiveTab] = useState('shorten');
     const [url, setUrl] = useState('');
     const [shortUrl, setShortUrl] = useState('');
@@ -70,6 +72,25 @@ function App() {
                     >
                         <Activity size={18} /> Analytics
                     </button>
+                    {token ? (
+                        <button
+                            className="nav-tab"
+                            onClick={() => {
+                                localStorage.removeItem('token');
+                                setToken('');
+                                setActiveTab('shorten');
+                            }}
+                        >
+                            <LogOut size={18} /> Logout
+                        </button>
+                    ) : (
+                        <button
+                            className={`nav-tab ${activeTab === 'auth' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('auth')}
+                        >
+                            Login
+                        </button>
+                    )}
                 </div>
             </nav>
 
@@ -141,9 +162,27 @@ function App() {
                             </div>
                         </section>
                     </>
-                ) : (
-                    <Analytics />
-                )}
+                ) : activeTab === 'analytics' ? (
+                    token ? (
+                        <Analytics token={token} />
+                    ) : (
+                        <div className="empty-state" style={{ marginTop: '5rem' }}>
+                            <Shield size={48} style={{ margin: '0 auto', marginBottom: '1rem', opacity: 0.5 }} />
+                            <h3>Authentication Required</h3>
+                            <p style={{ marginBottom: '1.5rem', marginTop: '0.5rem', color: 'var(--text-muted)' }}>Please log in to view the analytics dashboard.</p>
+                            <button className="btn-primary" onClick={() => setActiveTab('auth')}>
+                                Go to Login
+                            </button>
+                        </div>
+                    )
+                ) : activeTab === 'auth' ? (
+                    <Auth
+                        setToken={(t) => {
+                            setToken(t);
+                            setActiveTab('analytics');
+                        }}
+                    />
+                ) : null}
             </main>
 
             <footer className="footer">
