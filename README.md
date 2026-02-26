@@ -23,9 +23,10 @@ SleekLink is built to solve the classic "URL Shortener" system design interview 
    - To securely maintain distributed counts without orphans, the database enforces strict `@ManyToOne` foreign keys mapping all aggregated analytical data (e.g., Browsers, Geos, OS) directly back to centralized `UrlMapping` entities. 
    - This strict relational model utilizes multi-column unique indexes to prevent the Kafka workers from inserting duplicate race-condition rows concurrently.
 
-4. **Secure Dashboard Access**:
+4. **Secure Dashboard Access & Ownership Enforcement**:
    - Implements Stateless **JWT (JSON Web Token)** Authentication using Spring Security.
-   - Secures the React-based analytics dashboard, while keeping the shortening and redirection endpoints natively public.
+   - Prevents **Broken Object Level Authorization (BOLA)** by strictly querying the PostgreSQL database to verify the URL owner against the JWT Principal before delegating intensive analytics retrieval to the Redis cache.
+   - Secures the React-based analytics dashboard, while keeping the URL redirection endpoints natively public.
 
 ---
 
