@@ -101,7 +101,7 @@ public class UrlService {
 
         String totalKey = "cache:total:" + shortCode;
 
-        //  1. If Cache doesn't exist, Load entirely from DB & populate Cache
+        // 1. If Cache doesn't exist, Load entirely from DB & populate Cache
         if (Boolean.FALSE.equals(redisTemplate.hasKey(totalKey))) {
             System.out.println("Cache missed, loading analytics from DB to Redis...");
             UrlMapping mapping = urlRepository.findByShortCode(shortCode)
@@ -114,42 +114,52 @@ public class UrlService {
 
             // Push Daily
             Map<String, String> dailyMap = new HashMap<>();
-            dailyRepo.findByShortCode(shortCode).forEach(d -> dailyMap.put(d.getDate().toString(), String.valueOf(d.getCount())));
-            if (!dailyMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:daily:" + shortCode, dailyMap);
+            dailyRepo.findByShortCode(shortCode)
+                    .forEach(d -> dailyMap.put(d.getDate().toString(), String.valueOf(d.getCount())));
+            if (!dailyMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:daily:" + shortCode, dailyMap);
             redisTemplate.expire("cache:daily:" + shortCode, Duration.ofHours(24));
 
             // Push Hourly
             Map<String, String> hourlyMap = new HashMap<>();
-            hourlyRepo.findByShortCode(shortCode).forEach(h -> hourlyMap.put(h.getHour().toString(), String.valueOf(h.getCount())));
-            if (!hourlyMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:hourly:" + shortCode, hourlyMap);
+            hourlyRepo.findByShortCode(shortCode)
+                    .forEach(h -> hourlyMap.put(h.getHour().toString(), String.valueOf(h.getCount())));
+            if (!hourlyMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:hourly:" + shortCode, hourlyMap);
             redisTemplate.expire("cache:hourly:" + shortCode, Duration.ofHours(24));
 
             // Push Geo
             Map<String, String> geoMap = new HashMap<>();
             geoRepo.findByShortCode(shortCode).forEach(g -> geoMap.put(g.getCountry(), String.valueOf(g.getCount())));
-            if (!geoMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:geo:" + shortCode, geoMap);
+            if (!geoMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:geo:" + shortCode, geoMap);
             redisTemplate.expire("cache:geo:" + shortCode, Duration.ofHours(24));
 
             // Push OS
             Map<String, String> osMap = new HashMap<>();
             osRepo.findByShortCode(shortCode).forEach(o -> osMap.put(o.getOs(), String.valueOf(o.getCount())));
-            if (!osMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:os:" + shortCode, osMap);
+            if (!osMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:os:" + shortCode, osMap);
             redisTemplate.expire("cache:os:" + shortCode, Duration.ofHours(24));
 
             // Push Device
             Map<String, String> deviceMap = new HashMap<>();
-            deviceRepo.findByShortCode(shortCode).forEach(d -> deviceMap.put(d.getDevice(), String.valueOf(d.getCount())));
-            if (!deviceMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:device:" + shortCode, deviceMap);
+            deviceRepo.findByShortCode(shortCode)
+                    .forEach(d -> deviceMap.put(d.getDevice(), String.valueOf(d.getCount())));
+            if (!deviceMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:device:" + shortCode, deviceMap);
             redisTemplate.expire("cache:device:" + shortCode, Duration.ofHours(24));
 
             // Push Browser
             Map<String, String> browserMap = new HashMap<>();
-            browserRepo.findByShortCode(shortCode).forEach(b -> browserMap.put(b.getBrowser(), String.valueOf(b.getCount())));
-            if (!browserMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:browser:" + shortCode, browserMap);
+            browserRepo.findByShortCode(shortCode)
+                    .forEach(b -> browserMap.put(b.getBrowser(), String.valueOf(b.getCount())));
+            if (!browserMap.isEmpty())
+                redisTemplate.opsForHash().putAll("cache:browser:" + shortCode, browserMap);
             redisTemplate.expire("cache:browser:" + shortCode, Duration.ofHours(24));
         }
 
-        //  2. Read Everything Directly from Redis Cache! (Zero Math, Real-Time)
+        // 2. Read Everything Directly from Redis Cache! (Zero Math, Real-Time)
         Object totalClicksObj = redisTemplate.opsForValue().get(totalKey);
         int totalClicks = totalClicksObj != null ? Integer.parseInt(totalClicksObj.toString()) : 0;
 

@@ -5,9 +5,13 @@ import com.blueconic.browscap.UserAgentParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import java.time.Duration;
 
 @Service
 public class AnalyticsService {
+
+        @Autowired
+        private RedisTemplate<String, Object> redisTemplate;
 
         @Autowired
         private KafkaProducerService kafkaProducerService;
@@ -15,7 +19,18 @@ public class AnalyticsService {
         @Autowired
         private UserAgentParser userAgentParser;
 
-        public void updateAnalytics(String shortCode, String country, String device) {
+        public void updateAnalytics(String shortCode, String ipAddress, String device) {
+
+                // 🛑 DEBOUNCE LOGIC (Solves the Smartphone double-click / prefetch bug)
+                // If this IP has clicked this shortCode in the last 5 seconds, ignore the
+                // duplicate!
+                String debounceKey = "debounce:" + shortCode + ":" + ipAddress;
+                if (Boolean.TRUE.equals(redisTemplate.hasKey(debounceKey))) {
+                        System.out.println("Ignored duplicate prefetch/click from IP: " + ipAddress);
+                        return;
+                }
+                redisTemplate.opsForValue().set(debounceKey, "true", Duration.ofSeconds(5));
+
                 String os = "Unknown";
                 String browser = "Unknown";
                 String deviceType = "Unknown";
@@ -30,6 +45,6 @@ public class AnalyticsService {
                 // CQRS: Write-Side (Event Stream)
                 // We ONLY send the event to Kafka. The consumer will handle DB and Cache
                 // updates.
-                kafkaProducerService.sendClickEvent(shortCode, country, os, browser, deviceType);
+                kafkaProducerService.sendClickEvent(shortCode, ipAddress, os, browser, deviceType);
         }
 }
