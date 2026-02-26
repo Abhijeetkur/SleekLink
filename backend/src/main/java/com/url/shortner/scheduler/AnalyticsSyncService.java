@@ -43,7 +43,8 @@ public class AnalyticsSyncService {
     @Autowired
     private BrowserRepo browserRepo;
 
-    @Scheduled(fixedRate = 60000)
+    // Disabled cron - Kafka now processes events in real-time
+    // @Scheduled(fixedDelay = 60000)
     public void syncAllAnalytics() {
 
         // 1. TOTAL CLICKS (SAFE VERSION)

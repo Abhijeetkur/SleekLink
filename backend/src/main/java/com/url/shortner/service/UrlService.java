@@ -1,9 +1,5 @@
 package com.url.shortner.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.url.shortner.entity.DailyAnalytics;
-import com.url.shortner.entity.GeoAnalytics;
-import com.url.shortner.entity.HourlyAnalytics;
 import com.url.shortner.repository.UrlRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.url.shortner.encoder.Base62Encoder;
@@ -14,9 +10,6 @@ import com.url.shortner.repository.HourlyRepo;
 import com.url.shortner.repository.OsRepo;
 import com.url.shortner.repository.DeviceRepo;
 import com.url.shortner.repository.BrowserRepo;
-import com.url.shortner.entity.OsAnalytics;
-import com.url.shortner.entity.DeviceAnalytics;
-import com.url.shortner.entity.BrowserAnalytics;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -82,7 +75,7 @@ public class UrlService {
         String cachedUrl = (String) redisTemplate.opsForValue().get("url:" + shortCode);
 
         if (cachedUrl != null) {
-            analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // 🔥 FIX
+            analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // FIX
             return cachedUrl;
         }
 
@@ -96,7 +89,7 @@ public class UrlService {
                 longUrl,
                 Duration.ofHours(24));
 
-        analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // 🔥 FIX
+        analyticsService.updateAnalytics(shortCode, ipAddress, userAgent); // FIX
 
         return longUrl;
     }
@@ -106,168 +99,84 @@ public class UrlService {
         Map<String, Object> response = new HashMap<>();
         response.put("shortCode", shortCode);
 
-        String snapshotKey = "analytics_db_snapshot:" + shortCode;
+        String totalKey = "cache:total:" + shortCode;
 
-        Map<String, Object> dbSnapshot = null;
-
-        try {
-            // 🔥 1. Try to get DB snapshot from Redis
-            String cachedJson = (String) redisTemplate.opsForValue().get(snapshotKey);
-
-            if (cachedJson != null) {
-                System.out.println("snapshot found");
-                System.out.println(objectMapper.readTree(cachedJson));
-                dbSnapshot = objectMapper.readValue(
-                        cachedJson,
-                        new TypeReference<Map<String, Object>>() {
-                        });
-            }
-        } catch (Exception e) {
-            dbSnapshot = null; // fallback to DB
-        }
-
-        // 🔥 2. If snapshot not found → fetch from DB
-        if (dbSnapshot == null) {
-            System.out.println("snapshot not found so db hit");
-
+        //  1. If Cache doesn't exist, Load entirely from DB & populate Cache
+        if (Boolean.FALSE.equals(redisTemplate.hasKey(totalKey))) {
+            System.out.println("Cache missed, loading analytics from DB to Redis...");
             UrlMapping mapping = urlRepository.findByShortCode(shortCode)
                     .orElseThrow(() -> new RuntimeException("URL not found"));
 
             int dbClicks = mapping.getClickCount();
 
-            var dailyDb = dailyRepo.findByShortCode(shortCode);
-            var hourlyDb = hourlyRepo.findByShortCode(shortCode);
-            var geoDb = geoRepo.findByShortCode(shortCode);
-            var osDb = osRepo.findByShortCode(shortCode);
-            var deviceDb = deviceRepo.findByShortCode(shortCode);
-            var browserDb = browserRepo.findByShortCode(shortCode);
+            // Push Total
+            redisTemplate.opsForValue().set(totalKey, String.valueOf(dbClicks), Duration.ofHours(24));
 
-            // Convert DB objects → Map
-            Map<String, Integer> dailyMap = new HashMap<>();
-            for (DailyAnalytics d : dailyDb) {
-                dailyMap.put(d.getDate().toString(), d.getCount());
-            }
+            // Push Daily
+            Map<String, String> dailyMap = new HashMap<>();
+            dailyRepo.findByShortCode(shortCode).forEach(d -> dailyMap.put(d.getDate().toString(), String.valueOf(d.getCount())));
+            if (!dailyMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:daily:" + shortCode, dailyMap);
+            redisTemplate.expire("cache:daily:" + shortCode, Duration.ofHours(24));
 
-            Map<String, Integer> hourlyMap = new HashMap<>();
-            for (HourlyAnalytics h : hourlyDb) {
-                hourlyMap.put(h.getHour().toString(), h.getCount());
-            }
+            // Push Hourly
+            Map<String, String> hourlyMap = new HashMap<>();
+            hourlyRepo.findByShortCode(shortCode).forEach(h -> hourlyMap.put(h.getHour().toString(), String.valueOf(h.getCount())));
+            if (!hourlyMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:hourly:" + shortCode, hourlyMap);
+            redisTemplate.expire("cache:hourly:" + shortCode, Duration.ofHours(24));
 
-            Map<String, Integer> geoMap = new HashMap<>();
-            for (GeoAnalytics g : geoDb) {
-                geoMap.put(g.getCountry(), g.getCount());
-            }
+            // Push Geo
+            Map<String, String> geoMap = new HashMap<>();
+            geoRepo.findByShortCode(shortCode).forEach(g -> geoMap.put(g.getCountry(), String.valueOf(g.getCount())));
+            if (!geoMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:geo:" + shortCode, geoMap);
+            redisTemplate.expire("cache:geo:" + shortCode, Duration.ofHours(24));
 
-            Map<String, Integer> osMap = new HashMap<>();
-            for (OsAnalytics o : osDb) {
-                osMap.put(o.getOs(), o.getCount());
-            }
+            // Push OS
+            Map<String, String> osMap = new HashMap<>();
+            osRepo.findByShortCode(shortCode).forEach(o -> osMap.put(o.getOs(), String.valueOf(o.getCount())));
+            if (!osMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:os:" + shortCode, osMap);
+            redisTemplate.expire("cache:os:" + shortCode, Duration.ofHours(24));
 
-            Map<String, Integer> deviceMap = new HashMap<>();
-            for (DeviceAnalytics d : deviceDb) {
-                deviceMap.put(d.getDevice(), d.getCount());
-            }
+            // Push Device
+            Map<String, String> deviceMap = new HashMap<>();
+            deviceRepo.findByShortCode(shortCode).forEach(d -> deviceMap.put(d.getDevice(), String.valueOf(d.getCount())));
+            if (!deviceMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:device:" + shortCode, deviceMap);
+            redisTemplate.expire("cache:device:" + shortCode, Duration.ofHours(24));
 
-            Map<String, Integer> browserMap = new HashMap<>();
-            for (BrowserAnalytics b : browserDb) {
-                browserMap.put(b.getBrowser(), b.getCount());
-            }
-
-            dbSnapshot = new HashMap<>();
-            dbSnapshot.put("dbClicks", dbClicks);
-            dbSnapshot.put("dailyAnalytics", dailyMap);
-            dbSnapshot.put("hourlyAnalytics", hourlyMap);
-            dbSnapshot.put("geoAnalytics", geoMap);
-            dbSnapshot.put("osAnalytics", osMap);
-            dbSnapshot.put("deviceAnalytics", deviceMap);
-            dbSnapshot.put("browserAnalytics", browserMap);
-
-            // 🔥 3. Cache snapshot in Redis (short TTL)
-            try {
-                redisTemplate.opsForValue().set(
-                        snapshotKey,
-                        objectMapper.writeValueAsString(dbSnapshot),
-                        Duration.ofSeconds(20) // 🔥 tune this
-                );
-            } catch (Exception e) {
-                System.out.println("Snapshot cache failed: " + e.getMessage());
-            }
+            // Push Browser
+            Map<String, String> browserMap = new HashMap<>();
+            browserRepo.findByShortCode(shortCode).forEach(b -> browserMap.put(b.getBrowser(), String.valueOf(b.getCount())));
+            if (!browserMap.isEmpty()) redisTemplate.opsForHash().putAll("cache:browser:" + shortCode, browserMap);
+            redisTemplate.expire("cache:browser:" + shortCode, Duration.ofHours(24));
         }
 
-        // 🔥 4. Extract snapshot data
-        int dbClicks = (Integer) dbSnapshot.get("dbClicks");
+        //  2. Read Everything Directly from Redis Cache! (Zero Math, Real-Time)
+        Object totalClicksObj = redisTemplate.opsForValue().get(totalKey);
+        int totalClicks = totalClicksObj != null ? Integer.parseInt(totalClicksObj.toString()) : 0;
 
-        Map<String, Integer> finalDaily = (Map<String, Integer>) dbSnapshot.get("dailyAnalytics");
+        Map<Object, Object> dailyAnalytics = redisTemplate.opsForHash().entries("cache:daily:" + shortCode);
+        Map<Object, Object> hourlyAnalytics = redisTemplate.opsForHash().entries("cache:hourly:" + shortCode);
+        Map<Object, Object> geoAnalytics = redisTemplate.opsForHash().entries("cache:geo:" + shortCode);
+        Map<Object, Object> osAnalytics = redisTemplate.opsForHash().entries("cache:os:" + shortCode);
+        Map<Object, Object> deviceAnalytics = redisTemplate.opsForHash().entries("cache:device:" + shortCode);
+        Map<Object, Object> browserAnalytics = redisTemplate.opsForHash().entries("cache:browser:" + shortCode);
 
-        Map<String, Integer> finalHourly = (Map<String, Integer>) dbSnapshot.get("hourlyAnalytics");
-
-        Map<String, Integer> finalGeo = (Map<String, Integer>) dbSnapshot.get("geoAnalytics");
-
-        Map<String, Integer> finalOs = (Map<String, Integer>) dbSnapshot.get("osAnalytics");
-
-        Map<String, Integer> finalDevice = (Map<String, Integer>) dbSnapshot.get("deviceAnalytics");
-
-        Map<String, Integer> finalBrowser = (Map<String, Integer>) dbSnapshot.get("browserAnalytics");
-
-        // 🔥 5. Fetch LIVE Redis data
-        Object redisClickObj = redisTemplate.opsForValue().get("click_total:" + shortCode);
-        int redisClicks = redisClickObj != null ? Integer.parseInt(redisClickObj.toString()) : 0;
-
-        Map<Object, Object> dailyRedis = redisTemplate.opsForHash().entries("daily:" + shortCode);
-        Map<Object, Object> hourlyRedis = redisTemplate.opsForHash().entries("hourly:" + shortCode);
-        Map<Object, Object> geoRedis = redisTemplate.opsForHash().entries("geo:" + shortCode);
-
-        // 🔥 5.5 Fetch OS, Device, and Browser data
-        Map<Object, Object> osRedis = redisTemplate.opsForHash().entries("os:" + shortCode);
-        Map<Object, Object> deviceRedis = redisTemplate.opsForHash().entries("device:" + shortCode);
-        Map<Object, Object> browserRedis = redisTemplate.opsForHash().entries("browser:" + shortCode);
-
-        // Convert OS, Device, Browser to Maps for the response
-        for (Map.Entry<Object, Object> entry : osRedis.entrySet()) {
-            finalOs.merge(entry.getKey().toString(), Integer.parseInt(entry.getValue().toString()), Integer::sum);
-        }
-
-        for (Map.Entry<Object, Object> entry : deviceRedis.entrySet()) {
-            finalDevice.merge(entry.getKey().toString(), Integer.parseInt(entry.getValue().toString()), Integer::sum);
-        }
-
-        for (Map.Entry<Object, Object> entry : browserRedis.entrySet()) {
-            finalBrowser.merge(entry.getKey().toString(), Integer.parseInt(entry.getValue().toString()), Integer::sum);
-        }
-
-        // 🔥 6. Merge DAILY
-        for (Map.Entry<Object, Object> entry : dailyRedis.entrySet()) {
-            String date = entry.getKey().toString();
-            int count = Integer.parseInt(entry.getValue().toString());
-            finalDaily.merge(date, count, Integer::sum);
-        }
-
-        // 🔥 7. Merge HOURLY
-        for (Map.Entry<Object, Object> entry : hourlyRedis.entrySet()) {
-            String hour = entry.getKey().toString();
-            int count = Integer.parseInt(entry.getValue().toString());
-            finalHourly.merge(hour, count, Integer::sum);
-        }
-
-        // 🔥 8. Merge GEO
-        for (Map.Entry<Object, Object> entry : geoRedis.entrySet()) {
-            String country = entry.getKey().toString();
-            int count = Integer.parseInt(entry.getValue().toString());
-            finalGeo.merge(country, count, Integer::sum);
-        }
-
-        // 🔥 9. Total clicks
-        int totalClicks = dbClicks + redisClicks;
-
-        // 🔥 10. Response
+        // Map directly to response
         response.put("totalClicks", totalClicks);
-        response.put("dailyAnalytics", finalDaily);
-        response.put("hourlyAnalytics", finalHourly);
-        response.put("geoAnalytics", finalGeo);
-        response.put("osAnalytics", finalOs);
-        response.put("deviceAnalytics", finalDevice);
-        response.put("browserAnalytics", finalBrowser);
+        response.put("dailyAnalytics", parseMap(dailyAnalytics));
+        response.put("hourlyAnalytics", parseMap(hourlyAnalytics));
+        response.put("geoAnalytics", parseMap(geoAnalytics));
+        response.put("osAnalytics", parseMap(osAnalytics));
+        response.put("deviceAnalytics", parseMap(deviceAnalytics));
+        response.put("browserAnalytics", parseMap(browserAnalytics));
 
         return response;
+    }
+
+    private Map<String, Integer> parseMap(Map<Object, Object> source) {
+        Map<String, Integer> result = new HashMap<>();
+        for (Map.Entry<Object, Object> entry : source.entrySet()) {
+            result.put(entry.getKey().toString(), Integer.parseInt(entry.getValue().toString()));
+        }
+        return result;
     }
 }
