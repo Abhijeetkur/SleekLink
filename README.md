@@ -19,7 +19,11 @@ SleekLink is built to solve the classic "URL Shortener" system design interview 
    - A background consumer asynchronously processes these streams, parsing User-Agent data, updating Redis counters, and syncing to PostgreSQL.
    - *Why?* This prevents database write locks from slowing down the critical path of redirecting a user.
 
-3. **Secure Dashboard Access**:
+3. **Stringent Relational Data Modeling (`JPA Mapping`)**:
+   - To securely maintain distributed counts without orphans, the database enforces strict `@ManyToOne` foreign keys mapping all aggregated analytical data (e.g., Browsers, Geos, OS) directly back to centralized `UrlMapping` entities. 
+   - This strict relational model utilizes multi-column unique indexes to prevent the Kafka workers from inserting duplicate race-condition rows concurrently.
+
+4. **Secure Dashboard Access**:
    - Implements Stateless **JWT (JSON Web Token)** Authentication using Spring Security.
    - Secures the React-based analytics dashboard, while keeping the shortening and redirection endpoints natively public.
 
