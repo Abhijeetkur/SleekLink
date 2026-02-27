@@ -12,7 +12,7 @@
 	<artifactId>urlShortner</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>urlShortner</name>
-	<description>Demo project for Spring Boot</description>
+	<description>Url Shortner Project</description>
 	<url/>
 	<licenses>
 		<license/>
